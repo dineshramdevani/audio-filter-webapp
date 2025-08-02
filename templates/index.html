@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Audio Filter Web App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f0f4f8;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            width: 90%;
+            max-width: 1100px;
+            margin: 20px auto;
+            background: #ffffff;
+            border-radius: 8px;
+            padding: 20px;
+            overflow-y: auto;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #007acc;
+        }
+        .form-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .form-row label {
+            flex: 1;
+            min-width: 120px;
+        }
+        .form-row input, .form-row select {
+            flex: 2;
+            padding: 6px;
+        }
+        .form-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        button {
+            background-color: #007acc;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #005f99;
+        }
+        .graphs {
+            margin-top: 30px;
+        }
+        .graphs img {
+            width: 100%;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            padding: 5px;
+            background: #fdfdfd;
+        }
+        audio {
+            margin-top: 10px;
+        }
+        .section-title {
+            background: #ddefff;
+            padding: 8px 12px;
+            border-left: 5px solid #007acc;
+            margin-top: 30px;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+    </style>
+    <script>
+        let inputAudio = null;
+        let outputAudio = null;
+
+        function stopAllAudio() {
+            if (inputAudio) inputAudio.pause();
+            if (outputAudio) outputAudio.pause();
+        }
+
+        function playAudio(id) {
+            stopAllAudio();
+            const audio = document.getElementById(id);
+            audio.currentTime = 0;
+            audio.play();
+            if (id === 'inputAudio') inputAudio = audio;
+            if (id === 'outputAudio') outputAudio = audio;
+        }
+
+        function stopAudio(id) {
+            const audio = document.getElementById(id);
+            audio.pause();
+            audio.currentTime = 0;
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <form action="/" method="POST" enctype="multipart/form-data">
+            <h2>Filter Settings</h2>
+            <div class="form-row">
+                <label for="filter_type">Filter Type:</label>
+                <select name="filter_type" id="filter_type" onchange="toggleCutoffFields()">
+                    <option value="lowpass">Lowpass</option>
+                    <option value="highpass">Highpass</option>
+                    <option value="bandpass">Bandpass</option>
+                    <option value="bandstop">Bandstop</option>
+                </select>
+
+                <label for="method">Filter Method:</label>
+                <select name="method" id="method" onchange="toggleFilterFields()">
+                    <option value="butter">Butterworth</option>
+                    <option value="cheby1">Chebyshev Type I</option>
+                    <option value="bessel">Bessel</option>
+                    <option value="ellip">Elliptic</option>
+                </select>
+
+                <label for="order">Order:</label>
+                <input type="number" name="order" value="4" min="1" required>
+            </div>
+
+            <div class="form-row">
+                <label for="cutoff">Cutoff Frequency (Hz):</label>
+                <input type="number" step="1" name="cutoff" value="1000" required>
+
+                <label for="cutoff2">Cutoff Frequency 2 (Hz):</label>
+                <input type="number" step="1" name="cutoff2" value="3000" id="cutoff2">
+            </div>
+
+            <div class="form-row" id="rippleField">
+                <label for="ripple">Ripple (dB):</label>
+                <input type="number" name="ripple" value="1">
+            </div>
+
+            <div class="form-row" id="stopbandField">
+                <label for="stopband">Stopband Attenuation (dB):</label>
+                <input type="number" name="stopband" value="40">
+            </div>
+
+            <div class="form-row">
+                <label for="file">Upload WAV File:</label>
+                <input type="file" name="file" accept=".wav">
+            </div>
+
+            <div class="form-buttons">
+                <button type="submit">Apply Filter</button>
+                <button type="button" onclick="playAudio('inputAudio')">▶️ Play Input</button>
+                <button type="button" onclick="playAudio('outputAudio')">▶️ Play Output</button>
+                <button type="button" onclick="stopAllAudio()">⏹️ Stop</button>
+                <a href="/download_pdf"><button type="button">⬇️ Download Graphs as PDF</button></a>
+            </div>
+        </form>
+
+        {% if input_audio %}
+            <div class="section-title">Input Audio</div>
+            <audio id="inputAudio" controls>
+                <source src="/play/input" type="audio/wav">
+            </audio>
+        {% endif %}
+
+        {% if output_audio %}
+            <div class="section-title">Filtered Audio</div>
+            <audio id="outputAudio" controls>
+                <source src="/play/output" type="audio/wav">
+            </audio>
+        {% endif %}
+
+        {% if graph_files %}
+            <div class="section-title">Generated Graphs</div>
+            <div class="graphs">
+                <div class="section-title">Input Audio Graphs</div>
+                {% for file in graph_files %}
+                    {% if 'input_' in file %}
+                        <img src="/output/{{ file }}">
+                    {% endif %}
+                {% endfor %}
+
+                <div class="section-title">Filter Graphs</div>
+                {% for file in graph_files %}
+                    {% if 'filter_' in file or 'impulse_' in file %}
+                        <img src="/output/{{ file }}">
+                    {% endif %}
+                {% endfor %}
+
+                <div class="section-title">Filtered Output Graphs</div>
+                {% for file in graph_files %}
+                    {% if 'output_' in file %}
+                        <img src="/output/{{ file }}">
+                    {% endif %}
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+
+    <script>
+        function toggleCutoffFields() {
+            const filterType = document.getElementById("filter_type").value;
+            document.getElementById("cutoff2").style.display = (filterType === "bandpass" || filterType === "bandstop") ? "inline" : "none";
+        }
+        function toggleFilterFields() {
+            const method = document.getElementById("method").value;
+            document.getElementById("rippleField").style.display = (method === "cheby1" || method === "ellip") ? "flex" : "none";
+            document.getElementById("stopbandField").style.display = (method === "ellip") ? "flex" : "none";
+        }
+        toggleCutoffFields();
+        toggleFilterFields();
+    </script>
+</body>
+</html>
