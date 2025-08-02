@@ -175,4 +175,7 @@ def download_pdf():
     return send_file(out_pdf_path, as_attachment=True)
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 10000))  # required by Render
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
+
+
